@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spark Education – SPARKLE | Hệ Thống Quản Trị &amp; Giảng Dạy</title>
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['"Be Vietnam Pro"', 'sans-serif'] },
+          colors: {
+            spark: { orange: '#FF7900', orangeDark: '#FF5A1F', pink: '#F04491', pinkPastel: '#FFE4EF', orangePastel: '#FFF0E4', bg: '#F8F8FA', text: '#667085', navy: '#20283A' }
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    body { font-family: 'Be Vietnam Pro', sans-serif; color: #20283A; background: #F8F8FA; }
+    .bg-spark-gradient { background: linear-gradient(110deg, #F04491 0%, #FF7900 100%); }
+    .text-spark-gradient { background: linear-gradient(110deg, #F04491 0%, #FF7900 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .btn-gradient { background: linear-gradient(110deg, #F04491 0%, #FF7900 100%); transition: all .2s; }
+    .btn-gradient:hover { opacity: .92; transform: translateY(-1px); box-shadow: 0 8px 20px -6px rgba(240,68,145,.45); }
+    .sidebar-item.active { background: linear-gradient(110deg, #F04491 0%, #FF7900 100%); color: #fff; font-weight: 700; }
+  </style>
+</head>
+<body class="antialiased">
+
+  <!-- ==================== VIEW 1: LOGIN PAGE ==================== -->
+  <section id="login-view" class="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-spark-pinkPastel/60 via-white to-spark-orangePastel/60">
+    <div class="w-full max-w-md bg-white rounded-3xl shadow-xl border border-gray-100 p-8 space-y-6">
+      <div class="text-center space-y-2">
+        <div class="inline-flex items-center justify-center px-4 py-1.5 rounded-full bg-spark-pinkPastel text-spark-pink text-xs font-extrabold tracking-wider">SPARK EDUCATION</div>
+        <h1 class="text-2xl font-extrabold text-spark-navy">SPARKLE <span class="text-spark-gradient">TEACHER</span></h1>
+        <p class="text-xs text-spark-text">Đăng nhập bằng tài khoản Admin hoặc Giáo viên được cấp</p>
+      </div>
+
+      <form id="login-form" onsubmit="AuthController.handleLogin(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-spark-navy mb-1.5">Email đăng nhập</label>
+          <input id="login-email" type="email" required placeholder="vd: trang@sparkeducation.vn" class="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:border-spark-pink outline-none" />
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-spark-navy mb-1.5">Mật khẩu</label>
+          <input id="login-password" type="password" required placeholder="••••••••" class="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:border-spark-pink outline-none" />
+        </div>
+        <div id="login-error" class="hidden p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 text-xs font-semibold"></div>
+        <button id="login-submit-btn" type="submit" class="w-full btn-gradient py-3 rounded-xl text-white font-bold text-sm">ĐĂNG NHẬP HỆ THỐNG</button>
+      </form>
+      <p class="text-[11px] text-center text-spark-text">Hệ thống không hỗ trợ tự đăng ký. Liên hệ Admin để được cấp hoặc mở khóa tài khoản.</p>
+    </div>
+  </section>
+
+  <!-- ==================== VIEW 2: ADMIN DASHBOARD ==================== -->
+  <div id="admin-view" class="hidden min-h-screen flex flex-col">
+    <header class="sticky top-0 z-30 h-16 bg-white border-b border-gray-100 px-4 lg:px-6 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <span class="text-lg font-extrabold text-spark-gradient">Spark Education</span>
+        <span class="hidden sm:inline-block px-2.5 py-1 rounded-lg bg-spark-navy text-white text-[11px] font-bold">SPARKLE ADMIN – SYSTEM MANAGEMENT</span>
+      </div>
+      <div class="flex items-center gap-3">
+        <span class="hidden md:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold"><span class="w-2 h-2 rounded-full bg-emerald-500"></span>Supabase RLS Active</span>
+        <span id="admin-header-name" class="text-xs font-bold text-spark-navy"></span>
+        <button onclick="AuthController.logout()" class="px-3.5 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-500 text-rose-600 hover:text-white text-xs font-bold transition-colors">Đăng xuất</button>
+      </div>
+    </header>
+
+    <div class="flex flex-1">
+      <aside class="w-64 bg-white border-r border-gray-100 p-4 space-y-1 hidden md:block shrink-0">
+        <button onclick="AdminApp.nav('overview')" data-admin-nav="overview" class="sidebar-item active w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-spark-navy hover:bg-spark-bg">1. Tổng quan</button>
+        <button onclick="AdminApp.nav('curriculum')" data-admin-nav="curriculum" class="sidebar-item w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-spark-navy hover:bg-spark-bg">2. Quản lý chương trình học</button>
+        <button onclick="AdminApp.nav('lessons')" data-admin-nav="lessons" class="sidebar-item w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-spark-navy hover:bg-spark-bg">3. Quản lý bài giảng (47–94)</button>
+        <button onclick="AdminApp.nav('rooms')" data-admin-nav="rooms" class="sidebar-item w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-spark-navy hover:bg-spark-bg">4. Quản lý Practice Room</button>
+        <button onclick="AdminApp.nav('homework')" data-admin-nav="homework" class="sidebar-item w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-spark-navy hover:bg-spark-bg">5. Quản lý BTVN</button>
+        <button onclick="AdminApp.nav('teachers')" data-admin-nav="teachers" class="sidebar-item w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-spark-navy hover:bg-spark-bg">6. Quản lý giáo viên</button>
+        <button onclick="AdminApp.nav('classes')" data-admin-nav="classes" class="sidebar-item w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-spark-navy hover:bg-spark-bg">7. Quản lý lớp học</button>
+        <button onclick="AdminApp.nav('schedules')" data-admin-nav="schedules" class="sidebar-item w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-spark-navy hover:bg-spark-bg">8. Quản lý lịch giảng dạy</button>
+        <button onclick="AdminApp.nav('library')" data-admin-nav="library" class="sidebar-item w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-spark-navy hover:bg-spark-bg">9. Thư viện tài liệu</button>
+        <button onclick="AdminApp.nav('stats')" data-admin-nav="stats" class="sidebar-item w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-spark-navy hover:bg-spark-bg">10. Thống kê</button>
+        <button onclick="AdminApp.nav('logs')" data-admin-nav="logs" class="sidebar-item w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-spark-navy hover:bg-spark-bg">11. Nhật ký hoạt động</button>
+        <button onclick="AdminApp.nav('settings')" data-admin-nav="settings" class="sidebar-item w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-spark-navy hover:bg-spark-bg">12. Cài đặt hệ thống</button>
+      </aside>
+
+      <main id="admin-main" class="flex-1 p-5 lg:p-8 overflow-y-auto"></main>
+    </div>
+  </div>
+
+  <!-- ==================== VIEW 3: TEACHER DASHBOARD ==================== -->
+  <div id="teacher-view" class="hidden min-h-screen flex flex-col">
+    <header class="sticky top-0 z-30 h-16 bg-white border-b border-gray-100 px-4 lg:px-6 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <span class="text-lg font-extrabold text-spark-gradient">Spark Education</span>
+        <span class="px-2.5 py-1 rounded-lg bg-blue-100 text-blue-700 text-[11px] font-extrabold">TEACHER DASHBOARD</span>
+      </div>
+      <div class="flex items-center gap-3">
+        <span id="teacher-header-name" class="text-xs font-bold text-spark-navy"></span>
+        <button onclick="AuthController.logout()" class="px-3.5 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-500 text-rose-600 hover:text-white text-xs font-bold transition-colors">Đăng xuất</button>
+      </div>
+    </header>
+
+    <div class="flex flex-1">
+      <aside class="w-60 bg-white border-r border-gray-100 p-4 space-y-1 hidden md:block shrink-0">
+        <button onclick="TeacherApp.nav('home')" data-teacher-nav="home" class="sidebar-item active w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-spark-navy hover:bg-spark-bg">1. Trang chủ</button>
+        <button onclick="TeacherApp.nav('schedule')" data-teacher-nav="schedule" class="sidebar-item w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-spark-navy hover:bg-spark-bg">2. Lịch giảng dạy</button>
+        <button onclick="TeacherApp.nav('curriculum')" data-teacher-nav="curriculum" class="sidebar-item w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-spark-navy hover:bg-spark-bg">3. Chương trình học</button>
+        <button onclick="TeacherApp.nav('lessons')" data-teacher-nav="lessons" class="sidebar-item w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-spark-navy hover:bg-spark-bg">4. Danh sách bài học (47–94)</button>
+        <button onclick="TeacherApp.nav('rooms')" data-teacher-nav="rooms" class="sidebar-item w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-spark-navy hover:bg-spark-bg">5. Practice Room của tôi</button>
+        <button onclick="TeacherApp.nav('scores')" data-teacher-nav="scores" class="sidebar-item w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-spark-navy hover:bg-spark-bg">6. Bảng điểm</button>
+        <button onclick="TeacherApp.nav('library')" data-teacher-nav="library" class="sidebar-item w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-spark-navy hover:bg-spark-bg">7. Thư viện tài liệu</button>
+      </aside>
+
+      <main id="teacher-main" class="flex-1 p-5 lg:p-8 overflow-y-auto"></main>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL: TẠO TÀI KHOẢN GIÁO VIÊN (ADMIN) ==================== -->
+  <div id="teacher-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-spark-navy/60 backdrop-blur-sm">
+    <div class="bg-white rounded-3xl w-full max-w-md p-6 space-y-4 shadow-2xl">
+      <h3 class="text-lg font-extrabold text-spark-navy">Tạo Tài Khoản Giáo Viên</h3>
+      <div class="space-y-3">
+        <input id="tm-title" type="text" placeholder="Danh xưng (VD: Cô Tràng)" class="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm" />
+        <input id="tm-fullname" type="text" placeholder="Họ và tên (VD: Nguyễn Thị Tràng)" class="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm" />
+        <input id="tm-username" type="text" placeholder="Tên đăng nhập (VD: cotrang)" class="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm" />
+        <input id="tm-email" type="email" placeholder="Email (VD: trang@sparkeducation.vn)" class="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm" />
+        <input id="tm-password" type="password" placeholder="Mật khẩu ban đầu (>= 6 ký tự)" class="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm" />
+        <input id="tm-classes" type="text" placeholder="Lớp phụ trách (phân cách bằng dấu phẩy: 6A1, 6A2)" class="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm" />
+      </div>
+      <div class="flex justify-end gap-2 pt-2">
+        <button onclick="document.getElementById('teacher-modal').classList.add('hidden')" class="px-4 py-2 rounded-xl bg-spark-bg text-xs font-bold">Hủy</button>
+        <button onclick="AdminApp.submitCreateTeacher()" class="btn-gradient px-5 py-2 rounded-xl text-white text-xs font-bold">Lưu tài khoản</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    'use strict';
+
+    // =========================================================================
+    // CẤU HÌNH SUPABASE (CHỈ DÙNG ANON KEY - KHÔNG DÙNG SERVICE ROLE KEY)
+    // =========================================================================
+    const SUPABASE_URL = 'https://YOUR_PROJECT_ID.supabase.co';
+    const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const SessionState = { user: null, profile: null, role: null };
+
+    async function logActivity(actionType, targetType = null, targetId = null, details = {}) {
+      if (!SessionState.user) return;
+      await sb.from('activity_logs').insert({
+        actor_id: SessionState.user.id,
+        actor_name: SessionState.profile?.full_name || SessionState.user.email,
+        actor_role: SessionState.role || 'unknown',
+        action_type: actionType,
+        target_type: targetType,
+        target_id: targetId,
+        details
+      });
+    }
+
+    // =========================================================================
+    // AUTH CONTROLLER (PHÂN QUYỀN THỰC TẾ TỪ SUPABASE)
+    // =========================================================================
+    const AuthController = {
+      async init() {
+        const { data: { session } } = await sb.auth.getSession();
+        if (session) await this.resolveAndRoute(session.user);
+        else this.showView('login-view');
+      },
+
+      async handleLogin(e) {
+        e.preventDefault();
+        const email = document.getElementById('login-email').value.trim();
+        const password = document.getElementById('login-password').value;
+        const errBox = document.getElementById('login-error');
+        errBox.classList.add('hidden');
+
+        const { data, error } = await sb.auth.signInWithPassword({ email, password });
+        if (error) {
+          errBox.textContent = 'Đăng nhập thất bại: ' + error.message;
+          errBox.classList.remove('hidden');
+          return;
+        }
+        await this.resolveAndRoute(data.user, true);
+      },
+
+      async resolveAndRoute(user, isFreshLogin = false) {
+        const [{ data: profile }, { data: roleRow }] = await Promise.all([
+          sb.from('profiles').select('*').eq('id', user.id).single(),
+          sb.from('user_roles').select('role').eq('user_id', user.id).single()
+        ]);
+
+        if (!profile || profile.status === 'locked' || !roleRow) {
+          await sb.auth.signOut();
+          const errBox = document.getElementById('login-error');
+          errBox.textContent = 'Tài khoản đã bị khóa hoặc chưa được cấp quyền truy cập.';
+          errBox.classList.remove('hidden');
+          this.showView('login-view');
+          return;
+        }
+
+        SessionState.user = user;
+        SessionState.profile = profile;
+        SessionState.role = roleRow.role;
+
+        if (isFreshLogin) await logActivity('login', 'auth', user.id);
+
+        if (roleRow.role === 'admin') {
+          document.getElementById('admin-header-name').textContent = profile.full_name;
+          this.showView('admin-view');
+          AdminApp.nav('overview');
+        } else {
+          document.getElementById('teacher-header-name').textContent = profile.full_name;
+          this.showView('teacher-view');
+          TeacherApp.nav('home');
+        }
+      },
+
+      async logout() {
+        await sb.auth.signOut();
+        SessionState.user = null; SessionState.profile = null; SessionState.role = null;
+        this.showView('login-view');
+      },
+
+      showView(id) {
+        ['login-view', 'admin-view', 'teacher-view'].forEach(v => {
+          document.getElementById(v).classList.toggle('hidden', v !== id);
+        });
+      }
+    };
+
+    // =========================================================================
+    // ADMIN APPLICATION
+    // =========================================================================
+    const AdminApp = {
+      async nav(section) {
+        document.querySelectorAll('[data-admin-nav]').forEach(b => b.classList.toggle('active', b.dataset.adminNav === section));
+        const main = document.getElementById('admin-main');
+        main.innerHTML = '<div class="text-sm text-spark-text">Đang tải dữ liệu thực tế từ Supabase...</div>';
+
+        if (section === 'overview') return this.renderOverview(main);
+        if (section === 'teachers') return this.renderTeachers(main);
+        if (section === 'lessons') return this.renderLessons(main);
+        if (section === 'rooms') return this.renderRooms(main);
+        if (section === 'logs') return this.renderLogs(main);
+        main.innerHTML = `<div class="bg-white rounded-2xl p-6 border border-gray-100"><h2 class="text-lg font-extrabold text-spark-navy">Mục: ${section.toUpperCase()}</h2><p class="text-xs text-spark-text mt-1">Đã kết nối bảo mật RLS với Supabase.</p></div>`;
+      },
+
+      async renderOverview(main) {
+        const [lessons, resources, teachers, classes, rooms, students, scores] = await Promise.all([
+          sb.from('lessons').select('*', { count: 'exact', head: true }),
+          sb.from('lesson_resources').select('*', { count: 'exact', head: true }),
+          sb.from('teachers').select('*', { count: 'exact', head: true }),
+          sb.from('classes').select('*', { count: 'exact', head: true }),
+          sb.from('practice_rooms').select('*', { count: 'exact', head: true }),
+          sb.from('room_students').select('*', { count: 'exact', head: true }),
+          sb.from('student_scores').select('*', { count: 'exact', head: true })
+        ]);
+        const graded = await sb.from('student_scores').select('*', { count: 'exact', head: true }).not('teacher_score', 'is', null);
+
+        const cards = [
+          ['Tổng số bài học', lessons.count || 0],
+          ['Tổng số tài liệu', resources.count || 0],
+          ['Tổng số giáo viên', teachers.count || 0],
+          ['Tổng số lớp', classes.count || 0],
+          ['Tổng số phòng luyện tập', rooms.count || 0],
+          ['Học sinh đã tham gia', students.count || 0],
+          ['Tổng số lượt làm bài', scores.count || 0],
+          ['Kết quả đã chấm', graded.count || 0],
+        ];
+
+        main.innerHTML = `
+          <h2 class="text-xl font-extrabold text-spark-navy mb-5">TỔNG QUAN HỆ THỐNG (DỮ LIỆU THỰC TẾ)</h2>
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            ${cards.map(([label, val]) => `
+              <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+                <div class="text-2xl font-extrabold text-spark-gradient">${val}</div>
+                <div class="text-xs font-bold text-spark-navy mt-1">${label}</div>
+              </div>`).join('')}
+          </div>`;
+      },
+
+      async renderTeachers(main) {
+        const { data: teachers, error } = await sb.from('teachers').select('*').order('created_at', { ascending: true });
+        if (error) { main.innerHTML = `<div class="text-rose-600 text-sm">${error.message}</div>`; return; }
+
+        main.innerHTML = `
+          <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
+            <h2 class="text-xl font-extrabold text-spark-navy">QUẢN LÝ TÀI KHOẢN GIÁO VIÊN</h2>
+            <button onclick="document.getElementById('teacher-modal').classList.remove('hidden'); document.getElementById('teacher-modal').classList.add('flex')" class="btn-gradient px-4 py-2.5 rounded-xl text-white text-xs font-bold">[+ TẠO TÀI KHOẢN]</button>
+          </div>
+          <div class="bg-white rounded-2xl border border-gray-100 overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-spark-bg text-spark-text uppercase">
+                <tr>
+                  <th class="p-3.5">Giáo viên</th><th class="p-3.5">Username / Email</th><th class="p-3.5">Trạng thái</th><th class="p-3.5">Thao tác Admin</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-100">
+                ${(teachers || []).map(t => `
+                  <tr>
+                    <td class="p-3.5 font-bold text-spark-navy">${t.display_title} – ${t.full_name}</td>
+                    <td class="p-3.5">${t.username}<br/><span class="text-spark-text">${t.email}</span></td>
+                    <td class="p-3.5"><span class="px-2 py-1 rounded-full font-bold ${t.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-600'}">${t.status === 'active' ? 'Hoạt động' : 'Đã khóa'}</span></td>
+                    <td class="p-3.5 flex flex-wrap gap-1.5">
+                      <button onclick="AdminApp.resetTeacherPassword('${t.user_id}')" class="px-2.5 py-1 rounded-lg bg-spark-orangePastel text-spark-orangeDark font-bold">[ĐẶT LẠI MẬT KHẨU]</button>
+                      <button onclick="AdminApp.toggleLockTeacher('${t.user_id}', '${t.status === 'active' ? 'locked' : 'active'}')" class="px-2.5 py-1 rounded-lg bg-spark-bg text-spark-navy font-bold">${t.status === 'active' ? '[KHOÁ TÀI KHOẢN]' : '[MỞ KHÓA]'}</button>
+                      <button onclick="AdminApp.deleteTeacher('${t.user_id}')" class="px-2.5 py-1 rounded-lg bg-rose-50 text-rose-600 font-bold">[XÓA TÀI KHOẢN]</button>
+                    </td>
+                  </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>`;
+      },
+
+      async callAdminEdge(payload) {
+        const { data, error } = await sb.functions.invoke('admin-manage-teacher', { body: payload });
+        if (error) { alert('Lỗi Edge Function: ' + error.message); return null; }
+        return data;
+      },
+
+      async submitCreateTeacher() {
+        const payload = {
+          action: 'create',
+          display_title: document.getElementById('tm-title').value.trim(),
+          full_name: document.getElementById('tm-fullname').value.trim(),
+          username: document.getElementById('tm-username').value.trim(),
+          email: document.getElementById('tm-email').value.trim(),
+          password: document.getElementById('tm-password').value,
+          assigned_classes: document.getElementById('tm-classes').value.split(',').map(s => s.trim()).filter(Boolean)
+        };
+        const res = await this.callAdminEdge(payload);
+        if (res?.ok) {
+          document.getElementById('teacher-modal').classList.add('hidden');
+          this.nav('teachers');
+        }
+      },
+
+      async resetTeacherPassword(user_id) {
+        const new_password = prompt('Nhập mật khẩu mới (>= 6 ký tự):');
+        if (!new_password || new_password.length < 6) return;
+        const res = await this.callAdminEdge({ action: 'reset_password', user_id, new_password });
+        if (res?.ok) alert('Đã đặt lại mật khẩu thành công.');
+      },
+
+      async toggleLockTeacher(user_id, status) {
+        const res = await this.callAdminEdge({ action: 'toggle_lock', user_id, status });
+        if (res?.ok) this.nav('teachers');
+      },
+
+      async deleteTeacher(user_id) {
+        if (!confirm('Xác nhận xóa vĩnh viễn tài khoản giáo viên này?')) return;
+        const res = await this.callAdminEdge({ action: 'delete', user_id });
+        if (res?.ok) this.nav('teachers');
+      },
+
+      async renderLessons(main) {
+        const { data: lessons } = await sb.from('lessons').select('*').order('lesson_number', { ascending: true });
+        main.innerHTML = `
+          <div class="flex items-center justify-between mb-5">
+            <h2 class="text-xl font-extrabold text-spark-navy">QUẢN LÝ BÀI GIẢNG (BÀI 47 – 94)</h2>
+            <button onclick="AdminApp.quickAddLesson()" class="btn-gradient px-4 py-2 rounded-xl text-white text-xs font-bold">+ THÊM BÀI HỌC</button>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            ${(lessons || []).map(l => `
+              <div class="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm space-y-2">
+                <div class="flex justify-between items-center">
+                  <span class="px-2.5 py-1 rounded-lg bg-spark-orangePastel text-spark-orangeDark text-xs font-extrabold">BÀI ${l.lesson_number}</span>
+                  <span class="text-[11px] font-bold ${l.is_published ? 'text-emerald-600' : 'text-gray-400'}">${l.is_published ? 'Đã xuất bản' : 'Đang ẩn'}</span>
+                </div>
+                <div class="font-bold text-sm text-spark-navy">${l.title}</div>
+                <div class="flex gap-2 pt-2">
+                  <button onclick="AdminApp.togglePublish('${l.id}', ${!l.is_published})" class="px-3 py-1.5 rounded-lg bg-spark-bg text-xs font-bold">${l.is_published ? 'Ẩn' : 'Xuất bản'}</button>
+                  <button onclick="AdminApp.deleteLesson('${l.id}')" class="px-3 py-1.5 rounded-lg bg-rose-50 text-rose-600 text-xs font-bold ml-auto">Xóa</button>
+                </div>
+              </div>`).join('')}
+          </div>`;
+      },
+
+      async quickAddLesson() {
+        const num = parseInt(prompt('Nhập số bài (VD: 47):'), 10);
+        const title = prompt('Nhập tên bài học:');
+        if (!num || !title) return;
+        await sb.from('lessons').insert({
+          id: `lesson-${num}`, lesson_number: num, title, topic_id: 'topic-1', topic_code: 'CHỦ ĐỀ', topic_title: 'Toán 6', sort_order: num, is_published: true, created_by: SessionState.user.id
+        });
+        this.nav('lessons');
+      },
+
+      async togglePublish(id, is_published) {
+        await sb.from('lessons').update({ is_published }).eq('id', id);
+        this.nav('lessons');
+      },
+
+      async deleteLesson(id) {
+        if (!confirm('Xóa bài học này?')) return;
+        await sb.from('lessons').delete().eq('id', id);
+        this.nav('lessons');
+      },
+
+      async renderRooms(main) {
+        const { data: rooms } = await sb.from('practice_rooms').select('*').order('created_at', { ascending: false });
+        main.innerHTML = `
+          <h2 class="text-xl font-extrabold text-spark-navy mb-5">TOÀN BỘ PRACTICE ROOM HỆ THỐNG</h2>
+          <div class="space-y-3">
+            ${(rooms || []).map(r => `
+              <div class="bg-white rounded-2xl p-4 border border-gray-100 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <div class="font-extrabold text-sm text-spark-navy">Mã: ${r.room_code} • ${r.lesson_id} (Room ${r.practice_room_number})</div>
+                  <div class="text-xs text-spark-text">Giáo viên: ${r.teacher_name} • Trạng thái: ${r.status}</div>
+                </div>
+              </div>`).join('') || '<p class="text-xs text-spark-text">Chưa có phòng nào được tạo.</p>'}
+          </div>`;
+      },
+
+      async renderLogs(main) {
+        const { data: logs } = await sb.from('activity_logs').select('*').order('created_at', { ascending: false }).limit(100);
+        main.innerHTML = `
+          <h2 class="text-xl font-extrabold text-spark-navy mb-5">NHẬT KÝ HOẠT ĐỘNG</h2>
+          <div class="bg-white rounded-2xl border border-gray-100 divide-y divide-gray-100 text-xs">
+            ${(logs || []).map(l => `
+              <div class="p-3.5 flex justify-between gap-4">
+                <div><strong>${l.actor_name}</strong> (${l.actor_role}) – <span class="text-spark-pink font-bold">${l.action_type}</span></div>
+                <div class="text-spark-text">${new Date(l.created_at).toLocaleString('vi-VN')}</div>
+              </div>`).join('') || '<div class="p-4 text-spark-text">Chưa có nhật ký.</div>'}
+          </div>`;
+      }
+    };
+
+    // =========================================================================
+    // TEACHER APPLICATION (CHỈ XEM TÀI NGUYÊN XUẤT BẢN & QUẢN LÝ PHÒNG CỦA MÌNH)
+    // =========================================================================
+    const TeacherApp = {
+      async nav(section) {
+        document.querySelectorAll('[data-teacher-nav]').forEach(b => b.classList.toggle('active', b.dataset.teacherNav === section));
+        const main = document.getElementById('teacher-main');
+        main.innerHTML = '<div class="text-sm text-spark-text">Đang tải dữ liệu...</div>';
+
+        if (section === 'home' || section === 'lessons') return this.renderLessons(main);
+        if (section === 'rooms') return this.renderOwnRooms(main);
+        main.innerHTML = `<div class="bg-white rounded-2xl p-6 border border-gray-100"><h2 class="text-lg font-extrabold text-spark-navy">Mục: ${section.toUpperCase()}</h2><p class="text-xs text-spark-text mt-1">Hiển thị dữ liệu trong phạm vi quyền Giáo viên.</p></div>`;
+      },
+
+      async renderLessons(main) {
+        const { data: lessons } = await sb.from('lessons').select('*').order('lesson_number', { ascending: true });
+        main.innerHTML = `
+          <h2 class="text-xl font-extrabold text-spark-navy mb-5">DANH SÁCH BÀI HỌC ĐƯỢC CẤP QUYỀN</h2>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            ${(lessons || []).map(l => `
+              <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm space-y-3">
+                <span class="px-2.5 py-1 rounded-lg bg-spark-pinkPastel text-spark-pink text-xs font-extrabold">BÀI ${l.lesson_number}</span>
+                <div class="font-bold text-sm text-spark-navy">${l.title}</div>
+                <div class="flex gap-2 pt-2">
+                  <button onclick="TeacherApp.createRoom('${l.id}', 1)" class="btn-gradient px-3.5 py-2 rounded-xl text-white text-xs font-bold">Tạo Practice Room</button>
+                </div>
+              </div>`).join('') || '<p class="text-xs text-spark-text">Admin chưa xuất bản bài học nào.</p>'}
+          </div>`;
+      },
+
+      async createRoom(lesson_id, practice_room_number) {
+        const room_code = 'SPK-' + Math.random().toString(36).substring(2, 7).toUpperCase();
+        const { data, error } = await sb.from('practice_rooms').insert({
+          room_code, lesson_id, practice_room_number,
+          teacher_id: SessionState.user.id,
+          teacher_name: SessionState.profile.full_name,
+          status: 'open'
+        }).select().single();
+
+        if (error) { alert('Lỗi tạo phòng: ' + error.message); return; }
+        await logActivity('create_room', 'practice_room', data.room_id, { room_code, lesson_id });
+        alert('Đã tạo Practice Room thành công! Mã phòng: ' + room_code);
+        this.nav('rooms');
+      },
+
+      async renderOwnRooms(main) {
+        const { data: rooms } = await sb.from('practice_rooms').select('*').order('created_at', { ascending: false });
+        main.innerHTML = `
+          <h2 class="text-xl font-extrabold text-spark-navy mb-5">PRACTICE ROOM CỦA TÔI</h2>
+          <div class="space-y-3">
+            ${(rooms || []).map(r => `
+              <div class="bg-white rounded-2xl p-4 border border-gray-100 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <div class="font-extrabold text-sm text-spark-navy">Mã phòng: ${r.room_code} • ${r.lesson_id}</div>
+                  <div class="text-xs text-spark-text">Trạng thái: ${r.status}</div>
+                </div>
+                <div class="flex gap-2">
+                  <button onclick="TeacherApp.closeRoom('${r.room_id}')" class="px-3.5 py-1.5 rounded-xl bg-rose-50 text-rose-600 text-xs font-bold">Đóng phòng</button>
+                </div>
+              </div>`).join('') || '<p class="text-xs text-spark-text">Bạn chưa tạo phòng luyện tập nào.</p>'}
+          </div>`;
+      },
+
+      async closeRoom(room_id) {
+        await sb.from('practice_rooms').update({ status: 'closed', closed_at: new Date().toISOString() }).eq('room_id', room_id);
+        await logActivity('close_room', 'practice_room', room_id);
+        this.nav('rooms');
+      }
+    };
+
+    window.addEventListener('DOMContentLoaded', () => AuthController.init());
+  </script>
+</body>
+</html>
